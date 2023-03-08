@@ -1,27 +1,39 @@
 import { useQuery } from "@tanstack/react-query";
-import { ListItemProps } from "./Components/List";
-import { Queue } from "./Components/Queue";
+import { ChangeEvent, useState } from "react";
+import { QueueWrapper } from "./Components/QueueWrapper";
+import { ResultWrapper } from "./Components/ResultWrapper";
 import { Search } from "./Components/Search";
 
-const items: ListItemProps[] = Array(100)
-  .fill("")
-  .map((_, index) => ({
-    id: window.crypto.randomUUID(),
-    song: `test ${index}`,
-    artists: ["yes"],
-    image: "",
-  }));
-
 function App() {
-  const { isLoading, error, data } = useQuery({
-    queryKey: ["spotify"],
-    queryFn: () => fetch(`${import.meta.env.VITE_BACKEND_URL}/search`),
+  const [search, setSearch] = useState("");
+
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+  };
+
+  const searchQuery = useQuery({
+    queryKey: ["spotify", search],
+    queryFn: async () => {
+      const url = new URL(`${import.meta.env.VITE_BACKEND_URL}/search`);
+      url.search = new URLSearchParams({ q: search }).toString();
+      const data = await fetch(url);
+      return data.json();
+    },
+  });
+
+  const queueQuery = useQuery({
+    queryKey: ["queue"],
+    queryFn: async () => {
+      const url = new URL(`${import.meta.env.VITE_BACKEND_URL}/queue`);
+      const data = await fetch(url);
+      return data.json();
+    },
   });
 
   return (
-    <div className="container mx-auto max-w-prose py-8 flex flex-col h-screen gap-8">
-      <div className="prose prose-green prose-invert justify-self-center my-auto">
-        <h1>Party</h1>
+    <div className="container mx-auto max-w-prose flex flex-col h-screen gap-8 py-8 p-2 sm:px-0">
+      <div className="prose prose-green prose-invert">
+        <h1>P A R T Y</h1>
         <p>
           Lorem ipsum dolor sit, amet consectetur adipisicing elit. Laudantium
           aperiam esse vero voluptas enim soluta ipsam quis? Qui ullam rerum
@@ -29,10 +41,14 @@ function App() {
           repellendus fugiat.
         </p>
 
-        <Search />
+        <Search handleSearch={handleSearchChange} />
       </div>
 
-      <Queue items={items} />
+      {!search ? (
+        <QueueWrapper {...queueQuery} />
+      ) : (
+        <ResultWrapper {...searchQuery} />
+      )}
     </div>
   );
 }
